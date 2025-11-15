@@ -16,10 +16,18 @@ export default function ListDetailPage({ lists, setLists }) {
 
   const currentUser = "Me";
   const isOwner = list?.owner === currentUser;
+  const isArchived = list?.archived;
 
   const saveToLocalStorage = (updatedLists) => {
     setLists(updatedLists);
     localStorage.setItem("shoppingLists", JSON.stringify(updatedLists));
+  };
+
+  const updateList = (changes) => {
+    const updatedLists = lists.map((l) =>
+      l.id === id ? { ...l, ...changes } : l
+    );
+    saveToLocalStorage(updatedLists);
   };
 
   useEffect(() => {
@@ -33,55 +41,42 @@ export default function ListDetailPage({ lists, setLists }) {
     const updatedItems = items.map((it) =>
       it.id === itemId ? { ...it, done: !it.done } : it
     );
-    const updatedLists = lists.map((l) =>
-      l.id === id ? { ...l, items: updatedItems } : l
-    );
     setItems(updatedItems);
-    saveToLocalStorage(updatedLists);
+    updateList({ items: updatedItems });
   };
 
   const removeItem = (itemId) => {
     const updatedItems = items.filter((it) => it.id !== itemId);
-    const updatedLists = lists.map((l) =>
-      l.id === id ? { ...l, items: updatedItems } : l
-    );
     setItems(updatedItems);
-    saveToLocalStorage(updatedLists);
+    updateList({ items: updatedItems });
   };
 
   const addItem = () => {
-    if (newItem.trim() === "") return;
+    if (newItem.trim() === "" || isArchived) return;
     const updatedItems = [
       ...items,
       { id: Date.now().toString(), name: newItem, done: false }
     ];
-    const updatedLists = lists.map((l) =>
-      l.id === id ? { ...l, items: updatedItems } : l
-    );
     setItems(updatedItems);
     setNewItem("");
-    saveToLocalStorage(updatedLists);
+    updateList({ items: updatedItems });
   };
 
   const handleRenameSubmit = (e) => {
     e.preventDefault();
-    const updatedLists = lists.map((l) =>
-      l.id === id ? { ...l, name: listName } : l
-    );
+    if (isArchived) return;
+    updateList({ name: listName });
     setIsEditingName(false);
-    saveToLocalStorage(updatedLists);
   };
 
   const handleRenameBlur = () => {
-    const updatedLists = lists.map((l) =>
-      l.id === id ? { ...l, name: listName } : l
-    );
+    if (isArchived) return;
+    updateList({ name: listName });
     setIsEditingName(false);
-    saveToLocalStorage(updatedLists);
   };
 
   const addMember = () => {
-    if (newMember.trim() === "") return;
+    if (newMember.trim() === "" || isArchived) return;
     if (members.some((m) => m.name.toLowerCase() === newMember.toLowerCase())) {
       setNewMember("");
       return;
@@ -90,21 +85,20 @@ export default function ListDetailPage({ lists, setLists }) {
       ...members,
       { id: Date.now().toString(), name: newMember }
     ];
-    const updatedLists = lists.map((l) =>
-      l.id === id ? { ...l, members: updatedMembers } : l
-    );
     setMembers(updatedMembers);
+    updateList({ members: updatedMembers });
     setNewMember("");
-    saveToLocalStorage(updatedLists);
   };
 
   const removeMember = (memberId) => {
+    if (isArchived) return;
     const updatedMembers = members.filter((m) => m.id !== memberId);
-    const updatedLists = lists.map((l) =>
-      l.id === id ? { ...l, members: updatedMembers } : l
-    );
     setMembers(updatedMembers);
-    saveToLocalStorage(updatedLists);
+    updateList({ members: updatedMembers });
+  };
+
+  const toggleArchive = () => {
+    updateList({ archived: !isArchived });
   };
 
   const leaveList = () => {
@@ -129,6 +123,11 @@ export default function ListDetailPage({ lists, setLists }) {
   };
 
   const deleteList = () => {
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete the list "${listName}"?`
+    );
+    if (!confirmDelete) return;
+
     const updatedLists = lists.filter((l) => l.id !== id);
     saveToLocalStorage(updatedLists);
     navigate("/lists");
@@ -147,13 +146,13 @@ export default function ListDetailPage({ lists, setLists }) {
     );
 
   return (
-    <div className="page">
+    <div className="page detail-page">
       <button className="back-btn" onClick={() => navigate("/lists")}>
-        Back
+        ← Back
       </button>
 
-      <div className="list-header">
-        {isEditingName && isOwner ? (
+      <div className="detail-header">
+        {isEditingName && isOwner && !isArchived ? (
           <form onSubmit={handleRenameSubmit}>
             <input
               className="rename-input"
@@ -165,89 +164,109 @@ export default function ListDetailPage({ lists, setLists }) {
           </form>
         ) : (
           <h2
-            onClick={isOwner ? () => setIsEditingName(true) : undefined}
-            className={isOwner ? "editable-title" : ""}
+            onClick={
+              isOwner && !isArchived ? () => setIsEditingName(true) : undefined
+            }
+            className={isOwner && !isArchived ? "editable-title" : ""}
           >
-            {listName}
-            {isOwner && <span className="edit-hint">✏️</span>}
+            {listName}{" "}
+            {isArchived && <span className="archived-label">(Archived)</span>}
+            {isOwner && !isArchived && <span className="edit-hint">✏️</span>}
           </h2>
         )}
       </div>
 
-      <div className="section">
+      <div className="detail-section">
         <h3>Items</h3>
-        <button
-          className="filter-btn"
-          onClick={() => setFilterDone((prev) => !prev)}
-        >
-          {filterDone ? "Show only undone" : "Show all"}
-        </button>
-
-        {filteredItems.map((item) => (
-          <div key={item.id} className="item-row">
-            <div className="item-left">
-              <input
-                type="checkbox"
-                checked={item.done}
-                onChange={() => toggleItem(item.id)}
-              />
-              <span className={item.done ? "done" : ""}>{item.name}</span>
-            </div>
-            <button onClick={() => removeItem(item.id)}>Remove</button>
-          </div>
-        ))}
-
-        {(isOwner || members.some((m) => m.name === currentUser)) && (
-          <div className="add-section">
-            <input
-              value={newItem}
-              onChange={(e) => setNewItem(e.target.value)}
-              placeholder="Add new item..."
-            />
-            <button onClick={addItem}>Add</button>
-          </div>
-        )}
-      </div>
-
-      <div className="section">
-        <h3>Members</h3>
-
-        {members.map((m) => (
-          <div key={m.id} className="member-row">
-            <span>
-              {m.name}
-              {m.name === list.owner && " (Owner)"}
-            </span>
-            {isOwner && m.name !== list.owner && (
-              <button onClick={() => removeMember(m.id)}>Remove</button>
-            )}
-          </div>
-        ))}
-
-        {isOwner && (
-          <div className="add-section">
-            <input
-              value={newMember}
-              onChange={(e) => setNewMember(e.target.value)}
-              placeholder="Add new member..."
-            />
-            <button onClick={addMember}>Add Member</button>
-          </div>
-        )}
-      </div>
-
-      <div className="section" style={{ marginTop: "30px" }}>
-        {isOwner ? (
+        <div className="detail-card">
           <button
-            onClick={deleteList}
-            style={{ backgroundColor: "#d33636", marginTop: "10px" }}
+            className="filter-btn"
+            onClick={() => setFilterDone((prev) => !prev)}
           >
-            Delete List
+            {filterDone ? "Show only undone" : "Show all"}
           </button>
-        ) : (
+
+          {filteredItems.map((item) => (
+            <div key={item.id} className="item-row">
+              <div className="item-left">
+                <input
+                  type="checkbox"
+                  checked={item.done}
+                  disabled={isArchived}
+                  onChange={() => toggleItem(item.id)}
+                />
+                <span className={item.done ? "done" : ""}>{item.name}</span>
+              </div>
+              {!isArchived && (
+                <button onClick={() => removeItem(item.id)}>Remove</button>
+              )}
+            </div>
+          ))}
+
+          {!isArchived && (
+            <div className="add-section">
+              <input
+                value={newItem}
+                onChange={(e) => setNewItem(e.target.value)}
+                placeholder="Add new item..."
+              />
+              <button onClick={addItem}>Add</button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="detail-section">
+        <h3>Members</h3>
+        <div className="detail-card">
+          {members.map((m) => (
+            <div key={m.id} className="member-row">
+              <span>
+                {m.name}
+                {m.name === list.owner && " (Owner)"}
+              </span>
+              {isOwner && m.name !== list.owner && !isArchived && (
+                <button onClick={() => removeMember(m.id)}>Remove</button>
+              )}
+            </div>
+          ))}
+
+          {isOwner && !isArchived && (
+            <div className="add-section">
+              <input
+                value={newMember}
+                onChange={(e) => setNewMember(e.target.value)}
+                placeholder="Add new member..."
+              />
+              <button onClick={addMember}>Add Member</button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="detail-footer">
+        {isOwner && (
+          <>
+            <button
+              onClick={toggleArchive}
+              className={isArchived ? "restore-btn" : "archive-btn"}
+              style={{ width: "140px" }}
+            >
+              {isArchived ? "Restore List" : "Archive List"}
+            </button>
+            <button
+              onClick={deleteList}
+              className="delete-btn"
+              style={{ marginLeft: "10px", width: "140px" }}
+            >
+              Delete List
+            </button>
+          </>
+        )}
+        {!isOwner && !isArchived && (
           <button
             onClick={leaveList}
-            style={{ backgroundColor: "#f39c12", marginTop: "10px" }}
+            style={{ backgroundColor: "#f39c12", marginLeft: "10px" }}
           >
             Leave List
           </button>

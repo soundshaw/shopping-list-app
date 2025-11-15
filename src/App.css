@@ -23,33 +23,45 @@ h3 {
   margin-top: 25px;
 }
 
+.list-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 16px;
+  margin-top: 10px;
+}
+
 .shopping-list-card {
   background-color: #6e84f5;
   color: white;
-  padding: 12px;
-  border-radius: 6px;
-  margin: 10px 0;
+  padding: 16px;
+  border-radius: 8px;
   cursor: pointer;
   display: flex;
+  flex-direction: column;
   justify-content: space-between;
-  align-items: center;
-  transition: background-color 0.2s ease;
+  height: 140px;
+  box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.15);
+  transition: background-color 0.25s ease, transform 0.15s ease, box-shadow 0.25s ease;
 }
 
 .shopping-list-card:hover {
   background-color: #4155f5;
+  transform: scale(1.05);
+  box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.2);
 }
 
-.list-title {
-  font-weight: bold;
-  font-size: 1.1rem;
+.shopping-list-card.archived {
+  background-color: #b7c1fa;
+  color: #2e3a8c;
 }
 
-.list-owner {
-  font-size: 0.9rem;
-  opacity: 0.9;
+.shopping-list-card.archived:hover {
+  background-color: #a5b0f0;
+  transform: scale(1.05);
+  box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.2);
 }
 
+/* === Globální tlačítka (Add, Filter, Back atd.) === */
 button {
   background-color: #2636c3;
   color: white;
@@ -57,37 +69,162 @@ button {
   padding: 8px 14px;
   border-radius: 6px;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.25s ease, transform 0.15s ease;
 }
 
 button:hover {
   background-color: #4155f5;
+  transform: scale(1.05);
 }
 
-.add-btn,
-.back-btn,
-.restore-btn,
-.filter-btn {
+/* === Tlačítka pro mazání, potvrzení apod. === */
+.delete-btn {
+  background-color: #d33636 !important;
+}
+
+.delete-btn:hover {
+  background-color: #a32a2a !important;
+}
+
+.restore-btn {
+  background-color: #5cb85c !important;
+}
+
+.restore-btn:hover {
+  background-color: #4cae4c !important;
+}
+
+.archive-btn {
+  background-color: #5c6df5 !important;
+}
+
+.archive-btn:hover {
+  background-color: #2636c3 !important;
+}
+
+/* === Modal === */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background-color: #eef1ff;
+  border: 2px solid #2636c3;
+  border-radius: 8px;
+  padding: 20px;
+  width: 320px;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+  animation: fadeIn 0.25s ease;
+}
+
+.modal h3 {
+  color: #2636c3;
+  margin-top: 0;
+}
+
+.modal input {
+  width: 100%;
+  padding: 8px;
   margin-top: 10px;
+  margin-bottom: 15px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1rem;
 }
 
-.add-section button {
-  background-color: #2636c3;
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
-.add-section button:hover {
-  background-color: #4155f5;
+.error-message {
+  color: #d33636;
+  background-color: #ffeaea;
+  border: 1px solid #d33636;
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin-top: -5px;
+  margin-bottom: 10px;
+  font-size: 0.9rem;
+  animation: fadeIn 0.25s ease;
+}
+
+/* === Detail stránky === */
+.detail-page {
+  margin-top: 20px;
+}
+
+.detail-header {
+  margin-bottom: 20px;
+}
+
+.detail-section {
+  margin-top: 30px;
+}
+
+.detail-card {
+  background-color: #f6f7ff;
+  border: 1px solid #c7ccff;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 10px;
+  box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.08);
+}
+
+.detail-footer {
+  margin-top: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* === sjednocená velikost tlačítek pouze v detail footeru === */
+.detail-footer button {
+  min-width: 150px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.95rem;
+  padding: 8px 16px;
+  margin-top: 0;
+}
+
+.archived-label {
+  font-size: 0.9rem;
+  color: #555;
+  background-color: #d8dcff;
+  border-radius: 4px;
+  padding: 2px 6px;
+  margin-left: 8px;
 }
 
 .item-row,
 .member-row {
-  background-color: #a7b3fa;
-  padding: 8px;
+  background-color: #e3e7ff;
+  border-radius: 6px;
+  padding: 8px 10px;
   margin: 6px 0;
-  border-radius: 4px;
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  align-items: center;
+}
+
+.item-row:hover,
+.member-row:hover {
+  background-color: #d5dcff;
 }
 
 .item-left {
@@ -127,19 +264,15 @@ input[type="checkbox"] {
   padding: 6px 10px;
 }
 
-.list-header {
-  margin-top: 10px;
-  margin-bottom: 10px;
-}
-
 .editable-title {
   cursor: pointer;
   display: inline-block;
-  transition: color 0.2s ease;
+  transition: color 0.2s ease, transform 0.15s ease;
 }
 
 .editable-title:hover {
   color: #cfd3ff;
+  transform: scale(1.03);
 }
 
 .rename-input {
@@ -163,6 +296,7 @@ input[type="checkbox"] {
 
 .filter-btn:hover {
   background-color: #2636c3;
+  transform: scale(1.05);
 }
 
 .member-row button {
@@ -171,6 +305,18 @@ input[type="checkbox"] {
 
 .member-row button:hover {
   background-color: #a32a2a;
+  transform: scale(1.05);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 @media (max-width: 768px) {
@@ -183,9 +329,12 @@ input[type="checkbox"] {
     font-size: 1.2rem;
   }
 
+  .list-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
   .shopping-list-card {
-    flex-direction: column;
-    align-items: flex-start;
+    height: auto;
   }
 
   .item-row,

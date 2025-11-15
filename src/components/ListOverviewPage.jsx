@@ -4,6 +4,9 @@ import { useNavigate } from "react-router-dom";
 export default function ListOverviewPage({ lists, setLists }) {
   const navigate = useNavigate();
   const [newListName, setNewListName] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const currentUser = "Me";
 
   const saveToLocalStorage = (updatedLists) => {
@@ -12,23 +15,59 @@ export default function ListOverviewPage({ lists, setLists }) {
   };
 
   const addList = () => {
-    if (newListName.trim() === "") return;
+    const trimmedName = newListName.trim();
+    if (trimmedName === "") {
+      setErrorMessage("List name cannot be empty.");
+      return;
+    }
+
+    const duplicate = lists.some(
+      (l) => l.name.toLowerCase() === trimmedName.toLowerCase()
+    );
+
+    if (duplicate) {
+      setErrorMessage(
+        "A list with this name already exists. Please choose another name."
+      );
+      return;
+    }
+
     const newList = {
       id: Date.now().toString(),
-      name: newListName,
+      name: trimmedName,
       owner: currentUser,
       members: [{ id: "me", name: currentUser }],
       items: [],
       archived: false
     };
+
     const updatedLists = [...lists, newList];
     saveToLocalStorage(updatedLists);
     setNewListName("");
+    setErrorMessage("");
+    setIsModalOpen(false);
+  };
+
+  const deleteList = (id, name, owner) => {
+    if (owner !== currentUser) return;
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete the list "${name}"?`
+    );
+    if (!confirmDelete) return;
+    const updatedLists = lists.filter((l) => l.id !== id);
+    saveToLocalStorage(updatedLists);
+  };
+
+  const toggleArchive = (id) => {
+    const updatedLists = lists.map((l) =>
+      l.id === id ? { ...l, archived: !l.archived } : l
+    );
+    saveToLocalStorage(updatedLists);
   };
 
   const visibleLists = lists.filter(
     (l) =>
-      !l.archived &&
+      (showArchived || !l.archived) &&
       (l.owner === currentUser ||
         l.members.some((m) => m.name === currentUser))
   );
@@ -37,20 +76,62 @@ export default function ListOverviewPage({ lists, setLists }) {
     <div className="page">
       <h2>My Shopping Lists</h2>
 
-      <div className="list-container">
+      <div className="list-grid">
         {visibleLists.length > 0 ? (
           visibleLists.map((list) => (
             <div
               key={list.id}
-              className="shopping-list-card"
+              className={`shopping-list-card ${list.archived ? "archived" : ""}`}
               onClick={() => navigate(`/list/${list.id}`)}
             >
-              <div className="list-title">{list.name}</div>
-              <div className="list-owner">
-                {list.owner === currentUser
-                  ? "You are the Owner"
-                  : `Owner: ${list.owner}`}
+              <div>
+                <div className="list-title">
+                  {list.name} {list.archived && "(Archived)"}
+                </div>
+                <div className="list-owner">
+                  {list.owner === currentUser
+                    ? "You are the Owner"
+                    : `Owner: ${list.owner}`}
+                </div>
               </div>
+
+              {list.owner === currentUser && (
+                <div style={{ display: "flex", gap: "6px" }}>
+                  {!list.archived ? (
+                    <button
+                      className="archive-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleArchive(list.id);
+                      }}
+                    >
+                      Archive
+                    </button>
+                  ) : (
+                    <button
+                      className="restore-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleArchive(list.id);
+                      }}
+                    >
+                      Restore
+                    </button>
+                  )}
+
+                  {!list.archived && (
+                    <button
+                      className="delete-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteList(list.id, list.name, list.owner);
+                      }}
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           ))
         ) : (
@@ -58,14 +139,57 @@ export default function ListOverviewPage({ lists, setLists }) {
         )}
       </div>
 
-      <div className="add-section">
-        <input
-          value={newListName}
-          onChange={(e) => setNewListName(e.target.value)}
-          placeholder="New shopping list name..."
-        />
-        <button onClick={addList}>Add Shopping List</button>
+      <div style={{ marginTop: "20px", display: "flex", gap: "10px" }}>
+        <button className="filter-btn" onClick={() => setIsModalOpen(true)}>
+          + New List
+        </button>
+
+        <button
+          className="filter-btn"
+          onClick={() => setShowArchived((prev) => !prev)}
+        >
+          {showArchived
+            ? "Show only active lists"
+            : "Show including archived"}
+        </button>
       </div>
+
+      {isModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
+          <div
+            className="modal"
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+          >
+            <h3>Create New Shopping List</h3>
+            <input
+              value={newListName}
+              onChange={(e) => {
+                setNewListName(e.target.value);
+                setErrorMessage("");
+              }}
+              placeholder="Enter list name..."
+            />
+            {errorMessage && (
+              <div className="error-message">{errorMessage}</div>
+            )}
+            <div className="modal-actions">
+              <button onClick={addList}>Create</button>
+              <button
+                className="cancel-btn"
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setNewListName("");
+                  setErrorMessage("");
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

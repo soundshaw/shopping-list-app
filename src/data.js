@@ -28,5 +28,22 @@ export const shoppingLists = [
       { id: "2", name: "Pens", done: false }
     ],
     archived: false
+  },
+  {
+    id: "3",
+    name: "Holiday Shopping",
+    owner: "Me",
+    members: [
+      { id: "me", name: "Me" },
+      { id: "lucy", name: "Lucy" },
+      { id: "david", name: "David" }
+    ],
+    items: [
+      { id: "1", name: "Suitcase", done: true },
+      { id: "2", name: "Sunscreen", done: false },
+      { id: "3", name: "Beach towel", done: false },
+      { id: "4", name: "Travel adapter", done: true }
+    ],
+    archived: true
   }
 ];
