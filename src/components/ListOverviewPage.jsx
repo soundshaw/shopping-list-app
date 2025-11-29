@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import * as api from "../api";
 
 export default function ListOverviewPage({ lists, setLists }) {
   const navigate = useNavigate();
@@ -9,12 +10,7 @@ export default function ListOverviewPage({ lists, setLists }) {
   const [errorMessage, setErrorMessage] = useState("");
   const currentUser = "Me";
 
-  const saveToLocalStorage = (updatedLists) => {
-    setLists(updatedLists);
-    localStorage.setItem("shoppingLists", JSON.stringify(updatedLists));
-  };
-
-  const addList = () => {
+  const addList = async () => {
     const trimmedName = newListName.trim();
     if (trimmedName === "") {
       setErrorMessage("List name cannot be empty.");
@@ -32,37 +28,41 @@ export default function ListOverviewPage({ lists, setLists }) {
       return;
     }
 
-    const newList = {
-      id: Date.now().toString(),
-      name: trimmedName,
-      owner: currentUser,
-      members: [{ id: "me", name: currentUser }],
-      items: [],
-      archived: false
-    };
-
-    const updatedLists = [...lists, newList];
-    saveToLocalStorage(updatedLists);
-    setNewListName("");
-    setErrorMessage("");
-    setIsModalOpen(false);
+    try {
+      const updatedLists = await api.createList(trimmedName, currentUser);
+      setLists(updatedLists);
+      setNewListName("");
+      setErrorMessage("");
+      setIsModalOpen(false);
+    } catch (e) {
+      console.error(e);
+      setErrorMessage("Failed to create list.");
+    }
   };
 
-  const deleteList = (id, name, owner) => {
+  const deleteList = async (id, name, owner) => {
     if (owner !== currentUser) return;
     const confirmDelete = window.confirm(
       `Are you sure you want to delete the list "${name}"?`
     );
     if (!confirmDelete) return;
-    const updatedLists = lists.filter((l) => l.id !== id);
-    saveToLocalStorage(updatedLists);
+    try {
+      const updatedLists = await api.deleteList(id);
+      setLists(updatedLists);
+    } catch (e) {
+      console.error(e);
+      alert("Failed to delete list.");
+    }
   };
 
-  const toggleArchive = (id) => {
-    const updatedLists = lists.map((l) =>
-      l.id === id ? { ...l, archived: !l.archived } : l
-    );
-    saveToLocalStorage(updatedLists);
+  const toggleArchive = async (id) => {
+    try {
+      const updatedLists = await api.toggleArchive(id);
+      setLists(updatedLists);
+    } catch (e) {
+      console.error(e);
+      alert("Failed to update archive state.");
+    }
   };
 
   const visibleLists = lists.filter(

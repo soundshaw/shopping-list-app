@@ -1,141 +1,172 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import * as api from "../api";
 
 export default function ListDetailPage({ lists, setLists }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const list = lists.find((l) => l.id === id);
 
-  const [items, setItems] = useState(list ? list.items : []);
-  const [members, setMembers] = useState(list ? list.members : []);
   const [newItem, setNewItem] = useState("");
   const [filterDone, setFilterDone] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
-  const [listName, setListName] = useState(list ? list.name : "");
+  const [tempName, setTempName] = useState("");
   const [newMember, setNewMember] = useState("");
 
   const currentUser = "Me";
   const isOwner = list?.owner === currentUser;
   const isArchived = list?.archived;
 
-  const saveToLocalStorage = (updatedLists) => {
-    setLists(updatedLists);
-    localStorage.setItem("shoppingLists", JSON.stringify(updatedLists));
-  };
-
-  const updateList = (changes) => {
-    const updatedLists = lists.map((l) =>
-      l.id === id ? { ...l, ...changes } : l
-    );
-    saveToLocalStorage(updatedLists);
-  };
-
   useEffect(() => {
-    if (!list) return;
-    setItems(list.items);
-    setMembers(list.members);
-    setListName(list.name);
+    if (list) {
+      setTempName(list.name);
+    }
   }, [list]);
 
-  const toggleItem = (itemId) => {
-    const updatedItems = items.map((it) =>
-      it.id === itemId ? { ...it, done: !it.done } : it
-    );
-    setItems(updatedItems);
-    updateList({ items: updatedItems });
-  };
+  const filteredItems =
+    list && list.items
+      ? filterDone
+        ? list.items
+        : list.items.filter((it) => !it.done)
+      : [];
 
-  const removeItem = (itemId) => {
-    const updatedItems = items.filter((it) => it.id !== itemId);
-    setItems(updatedItems);
-    updateList({ items: updatedItems });
-  };
-
-  const addItem = () => {
-    if (newItem.trim() === "" || isArchived) return;
-    const updatedItems = [
-      ...items,
-      { id: Date.now().toString(), name: newItem, done: false }
-    ];
-    setItems(updatedItems);
-    setNewItem("");
-    updateList({ items: updatedItems });
-  };
-
-  const handleRenameSubmit = (e) => {
+  const handleRenameSubmit = async (e) => {
     e.preventDefault();
-    if (isArchived) return;
-    updateList({ name: listName });
-    setIsEditingName(false);
+    if (!list || !isOwner || isArchived) return;
+    const trimmed = tempName.trim();
+    if (trimmed === "") return;
+    try {
+      const updatedLists = await api.renameList(id, trimmed);
+      setLists(updatedLists);
+      setIsEditingName(false);
+    } catch (e) {
+      console.error(e);
+      alert("Failed to rename list.");
+    }
   };
 
-  const handleRenameBlur = () => {
-    if (isArchived) return;
-    updateList({ name: listName });
-    setIsEditingName(false);
-  };
-
-  const addMember = () => {
-    if (newMember.trim() === "" || isArchived) return;
-    if (members.some((m) => m.name.toLowerCase() === newMember.toLowerCase())) {
-      setNewMember("");
+  const handleRenameBlur = async () => {
+    if (!list || !isOwner || isArchived) {
+      setIsEditingName(false);
       return;
     }
-    const updatedMembers = [
-      ...members,
-      { id: Date.now().toString(), name: newMember }
-    ];
-    setMembers(updatedMembers);
-    updateList({ members: updatedMembers });
-    setNewMember("");
+    const trimmed = tempName.trim();
+    if (trimmed === "") {
+      setIsEditingName(false);
+      setTempName(list.name);
+      return;
+    }
+    try {
+      const updatedLists = await api.renameList(id, trimmed);
+      setLists(updatedLists);
+      setIsEditingName(false);
+    } catch (e) {
+      console.error(e);
+      alert("Failed to rename list.");
+    }
   };
 
-  const removeMember = (memberId) => {
-    if (isArchived) return;
-    const updatedMembers = members.filter((m) => m.id !== memberId);
-    setMembers(updatedMembers);
-    updateList({ members: updatedMembers });
+  const addItem = async () => {
+    if (!list || isArchived) return;
+    const trimmed = newItem.trim();
+    if (trimmed === "") return;
+    try {
+      const updatedLists = await api.addItem(id, trimmed);
+      setLists(updatedLists);
+      setNewItem("");
+    } catch (e) {
+      console.error(e);
+      alert("Failed to add item.");
+    }
   };
 
-  const toggleArchive = () => {
-    updateList({ archived: !isArchived });
+  const toggleItem = async (itemId) => {
+    if (!list || isArchived) return;
+    try {
+      const updatedLists = await api.toggleItem(id, itemId);
+      setLists(updatedLists);
+    } catch (e) {
+      console.error(e);
+      alert("Failed to update item.");
+    }
   };
 
-  const leaveList = () => {
-    const updatedLists = lists
-      .map((l) => {
-        if (l.id === id) {
-          const updatedMembers = l.members.filter(
-            (m) => m.name !== currentUser
-          );
-          return { ...l, members: updatedMembers };
-        }
-        return l;
-      })
-      .filter(
-        (l) =>
-          l.owner === currentUser ||
-          l.members.some((m) => m.name === currentUser)
-      );
-
-    saveToLocalStorage(updatedLists);
-    navigate("/lists");
+  const removeItem = async (itemId) => {
+    if (!list || isArchived) return;
+    try {
+      const updatedLists = await api.removeItem(id, itemId);
+      setLists(updatedLists);
+    } catch (e) {
+      console.error(e);
+      alert("Failed to remove item.");
+    }
   };
 
-  const deleteList = () => {
+  const addMember = async () => {
+    if (!list || !isOwner || isArchived) return;
+    const trimmed = newMember.trim();
+    if (trimmed === "") return;
+    try {
+      const updatedLists = await api.addMember(id, trimmed);
+      setLists(updatedLists);
+      setNewMember("");
+    } catch (e) {
+      console.error(e);
+      alert("Failed to add member.");
+    }
+  };
+
+  const removeMember = async (memberId) => {
+    if (!list || !isOwner || isArchived) return;
+    try {
+      const updatedLists = await api.removeMember(id, memberId);
+      setLists(updatedLists);
+    } catch (e) {
+      console.error(e);
+      alert("Failed to remove member.");
+    }
+  };
+
+  const toggleArchive = async () => {
+    if (!list || !isOwner) return;
+    try {
+      const updatedLists = await api.toggleArchive(id);
+      setLists(updatedLists);
+    } catch (e) {
+      console.error(e);
+      alert("Failed to change archive state.");
+    }
+  };
+
+  const leaveList = async () => {
+    if (!list || isOwner || isArchived) return;
+    try {
+      const updatedLists = await api.leaveList(id, currentUser);
+      setLists(updatedLists);
+      navigate("/lists");
+    } catch (e) {
+      console.error(e);
+      alert("Failed to leave list.");
+    }
+  };
+
+  const deleteList = async () => {
+    if (!list || !isOwner) return;
     const confirmDelete = window.confirm(
-      `Are you sure you want to delete the list "${listName}"?`
+      `Are you sure you want to delete the list "${list.name}"?`
     );
     if (!confirmDelete) return;
-
-    const updatedLists = lists.filter((l) => l.id !== id);
-    saveToLocalStorage(updatedLists);
-    navigate("/lists");
+    try {
+      const updatedLists = await api.deleteList(id);
+      setLists(updatedLists);
+      navigate("/lists");
+    } catch (e) {
+      console.error(e);
+      alert("Failed to delete list.");
+    }
   };
 
-  const filteredItems = filterDone ? items : items.filter((it) => !it.done);
-
-  if (!list)
+  if (!list) {
     return (
       <div className="page">
         <button className="back-btn" onClick={() => navigate("/lists")}>
@@ -144,6 +175,7 @@ export default function ListDetailPage({ lists, setLists }) {
         <p>List not found</p>
       </div>
     );
+  }
 
   return (
     <div className="page detail-page">
@@ -156,8 +188,8 @@ export default function ListDetailPage({ lists, setLists }) {
           <form onSubmit={handleRenameSubmit}>
             <input
               className="rename-input"
-              value={listName}
-              onChange={(e) => setListName(e.target.value)}
+              value={tempName}
+              onChange={(e) => setTempName(e.target.value)}
               onBlur={handleRenameBlur}
               autoFocus
             />
@@ -169,7 +201,7 @@ export default function ListDetailPage({ lists, setLists }) {
             }
             className={isOwner && !isArchived ? "editable-title" : ""}
           >
-            {listName}{" "}
+            {list.name}{" "}
             {isArchived && <span className="archived-label">(Archived)</span>}
             {isOwner && !isArchived && <span className="edit-hint">✏️</span>}
           </h2>
@@ -219,7 +251,7 @@ export default function ListDetailPage({ lists, setLists }) {
       <div className="detail-section">
         <h3>Members</h3>
         <div className="detail-card">
-          {members.map((m) => (
+          {list.members.map((m) => (
             <div key={m.id} className="member-row">
               <span>
                 {m.name}
@@ -250,15 +282,10 @@ export default function ListDetailPage({ lists, setLists }) {
             <button
               onClick={toggleArchive}
               className={isArchived ? "restore-btn" : "archive-btn"}
-              style={{ width: "140px" }}
             >
               {isArchived ? "Restore List" : "Archive List"}
             </button>
-            <button
-              onClick={deleteList}
-              className="delete-btn"
-              style={{ marginLeft: "10px", width: "140px" }}
-            >
+            <button onClick={deleteList} className="delete-btn">
               Delete List
             </button>
           </>
@@ -266,7 +293,7 @@ export default function ListDetailPage({ lists, setLists }) {
         {!isOwner && !isArchived && (
           <button
             onClick={leaveList}
-            style={{ backgroundColor: "#f39c12", marginLeft: "10px" }}
+            style={{ backgroundColor: "#f39c12" }}
           >
             Leave List
           </button>
